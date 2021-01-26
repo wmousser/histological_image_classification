@@ -151,15 +151,44 @@ def augment_data(data, params):
     return augmented_data
 
 
+def shuffle_dataset(x,y):
+    """
+
+    :param x:
+    :param y:
+    :return:
+    """
+    if not x :
+        return x,y
+    # zip sets
+    temp_zip = list(zip(x,y))
+    # shuffle
+    shuffle(temp_zip)
+    # unzip
+    x, y = zip(*temp_zip)
+    # convert resulting sets into lists
+    return list(x), list(y)
+
+
 def build_datasets(data):
+    """
+    :param data:
+    :return: shuffled datasets x_train, y_train, x_test, y_test, x_valid, y_valid
+    """
     x_train = data['train']['x']
     y_train = data['train']['y']
+    # shuffle
+    x_train, y_train = shuffle_dataset(x_train, y_train)
 
     x_test = data['test']['x']
     y_test = data['test']['y']
+    # shuffle
+    x_test, y_test = shuffle_dataset(x_test, y_test)
 
     x_valid = data['valid']['x']
     y_valid = data['valid']['y']
+    #shuffle
+    x_valid, y_valid = shuffle_dataset(x_valid, y_valid)
 
     return (x_train, y_train,
             x_test, y_test,
@@ -167,10 +196,10 @@ def build_datasets(data):
 
 
 def prepare_data(params):
-    # from a directory prepare a data dict
+    # prepare a data dict from a directory
     data = get_image_dict_from_folder(params)
 
-    # filter data to use (magnification, classes ..)
+    # filter dataset to use (magnification, classes ..)
     data = filter_dataset(data, params)
 
     # split data into train, test and validation sets
@@ -184,7 +213,4 @@ def prepare_data(params):
 
     # build datasets
     x_train, y_train, x_test, y_test, x_valid, y_valid = build_datasets(data)
-
-
-    # flow from datframe
 

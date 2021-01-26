@@ -17,6 +17,6 @@ if __name__ == '__main__':
 
     # model = prepare_model(params)
 
-    # history = fit(model, data)
+    # fit(model, data)
 
     # display_results(history)
