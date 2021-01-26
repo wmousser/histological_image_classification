@@ -1,0 +1,30 @@
+# data set
+'dataset_path': '../cc_project/BreaKHis_v1/'
+'output_dir' : './BreaKHis/'
+'output_test': './output_test/'
+'classes': ['fibroadenoma', 'phyllodes_tumor', 'tubular_adenoma', 'adenosis','mucinous_carcinoma',
+            'ductal_carcinoma', 'lobular_carcinoma', 'papillary_carcinoma']
+'magnification': '40X'
+'magnifications' : ['40X', '100X', '200X', '400X']
+'tumor_types' : ['benign', 'malignant']
+'benign' : ['fibroadenoma', 'phyllodes_tumor', 'tubular_adenoma', 'adenosis']
+'malignant' : ['mucinous_carcinoma', 'ductal_carcinoma', 'lobular_carcinoma', 'papillary_carcinoma']
+'flip': [0,1,-1]
+# train
+'model': 'mnist_model'
+'dataset_for_datagen' : './breakHis_datagen/'
+'train_batch_size': 1
+'val_batch_size': 1
+'test_batch_size': 1
+'predict_batch_size': 20
+'epochs' : 100
+'class_mode': 'categorical'
+'loss': 'categorical_crossentropy'
+'early_stopping_monitor': 'val_accuracy'
+'early_stopping_mode': 'max'
+'early_stopping_patience' : 3
+'input_width' : 28
+'input_depth' : 28
+'valid_split' : 0.1
+'test_split' : 0.2
+
