@@ -11,7 +11,11 @@
 'malignant' : ['mucinous_carcinoma', 'ductal_carcinoma', 'lobular_carcinoma', 'papillary_carcinoma']
 'flip': [0,1,-1]
 # train
-'model': 'mnist_model'
+'fine_tuning': False
+'layer_name': 'Conv2'
+'feature_extractor': 'ResNet50'
+'mlp': 1
+'model_name': 'mnist_model'
 'dataset_for_datagen' : './breakHis_datagen/'
 'train_batch_size': 1
 'val_batch_size': 1
@@ -19,12 +23,13 @@
 'predict_batch_size': 20
 'epochs' : 100
 'class_mode': 'categorical'
-'loss': 'categorical_crossentropy'
 'early_stopping_monitor': 'val_accuracy'
 'early_stopping_mode': 'max'
 'early_stopping_patience' : 3
-'input_width' : 28
-'input_depth' : 28
+'input_width' : 32
+'input_depth' : 32
 'valid_split' : 0.1
 'test_split' : 0.2
-
+'metrics': 'accuracy'
+'optimizer': 'Adam'
+'loss': 'categorical_crossentropy'

@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # data = prepare_data(params)
     prepare_data(params)
 
-    # model = prepare_model(params)
+    model = prepare_model(params)
 
     # fit(model, data)
 

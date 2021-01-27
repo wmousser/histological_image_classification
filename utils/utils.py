@@ -1,20 +1,22 @@
-import pandas
-import  cv2
-import collections
+import cv2
 import numpy as np
-from PIL import Image
+
 from utils.utils_breakHis import *
+from utils.models import *
+
 from random import shuffle
 
+
 def print_dict_values(name, dictionary):
-    '''
+    """
+    :param name:
     :param dictionary:
     :return: print keys and values of dictionary
-    '''
-    print('-'*100, '\nThe dict |  ', name, '  |   contains :\n','-'*100)
+    """
+    print('-'*100, '\nThe dict |  ', name, '  |   contains :\n', '-'*100)
     for el in dictionary:
-        print(el , dictionary[el])
-    print(100*'-','\n', 100*'-')
+        print(el, dictionary[el])
+    print(100*'-', '\n', 100*'-')
 
 
 def get_split_values(nbr_items, test_split, valid_split):
@@ -25,7 +27,7 @@ def get_split_values(nbr_items, test_split, valid_split):
     :return: nbr items for train test and valid sets
     """
     nbr_test = int(nbr_items * test_split)
-    nbr_valid = int((nbr_items - nbr_test)* valid_split)
+    nbr_valid = int((nbr_items - nbr_test) * valid_split)
     nbr_train = nbr_items - nbr_test - nbr_valid
     # show values
     # print('%d for train, %d for valid and %d for test'%(nbr_train,nbr_valid,nbr_test))
@@ -52,8 +54,8 @@ def train_test_split_data_dict(data_dict, params):
         shuffle(image_list)
         # get valid, train and test values
         nbr_train, nbr_valid, nbr_test = get_split_values(nbr_items=len(image_list),
-                                                        test_split=test_split,
-                                                        valid_split=valid_split)
+                                                          test_split=test_split,
+                                                          valid_split=valid_split)
 
         data_split['train']['x'].extend(image_list[:nbr_train])
         data_split['train']['y'].extend([class_name]*nbr_train)
@@ -65,11 +67,11 @@ def train_test_split_data_dict(data_dict, params):
 
         data_split['test']['x'].extend(image_list[nbr_train+nbr_valid:])
         data_split['test']['y'].extend([class_name] * nbr_test)
-    #resume results
+    # resume results
     print('Split : %d images for train, %d images for valid and %d images for test'
-          %(len(data_split['train']['x']),
-           len(data_split['valid']['x']),
-           len(data_split['test']['x'])))
+          % (len(data_split['train']['x']),
+             len(data_split['valid']['x']),
+             len(data_split['test']['x'])))
 
     return data_split
 
@@ -86,8 +88,7 @@ def initialize_data():
 
 def balance_dataset(data):
     """
-    :param df:
-    :param set_name:
+    :param data:
     :return: todo : balanced dataset ...
     """
 
@@ -118,7 +119,7 @@ def augment_data(data, params):
     # set an dict
     augmented_data = initialize_data()
     # load, convert and preprocess images
-    for set_name in ['valid'] : #, 'train', 'test']:
+    for set_name in ['valid']:  #, 'train', 'test']:
         print(set_name, 'is about ', len(data[set_name]['y']))
         for i in range(len(data[set_name]['x'])):
             image = cv2.imread(data[set_name]['x'][i])
@@ -147,21 +148,21 @@ def augment_data(data, params):
                     im = cv2.rotate(image, cv2.cv2.ROTATE_90_COUNTERCLOCKWISE)
                     im = cv2.flip(im, flip)
                     augmented_data[set_name] = append_im_data_dict(augmented_data[set_name], im, label)
-        print(set_name , 'augmented by ',len(augmented_data[set_name]['y']))
+        print(set_name, 'augmented by ', len(augmented_data[set_name]['y']))
     return augmented_data
 
 
-def shuffle_dataset(x,y):
+def shuffle_dataset(x, y):
     """
 
     :param x:
     :param y:
     :return:
     """
-    if not x :
-        return x,y
+    if not x:
+        return x, y
     # zip sets
-    temp_zip = list(zip(x,y))
+    temp_zip = list(zip(x, y))
     # shuffle
     shuffle(temp_zip)
     # unzip
@@ -187,8 +188,10 @@ def build_datasets(data):
 
     x_valid = data['valid']['x']
     y_valid = data['valid']['y']
-    #shuffle
+    # shuffle
     x_valid, y_valid = shuffle_dataset(x_valid, y_valid)
+
+    # todo : to categorical and gatagen
 
     return (x_train, y_train,
             x_test, y_test,
@@ -214,3 +217,14 @@ def prepare_data(params):
     # build datasets
     x_train, y_train, x_test, y_test, x_valid, y_valid = build_datasets(data)
 
+
+def prepare_model(params):
+    # set feature extraction part
+    model = feature_extractor(params)
+
+    # add classification part
+    model = classifier(model, params)
+
+    print(model.summary())
+
+    return model
