@@ -13,10 +13,12 @@ if __name__ == '__main__':
     print_dict_values('params', params)
 
     # data = prepare_data(params)
-    prepare_data(params)
+    x_train, y_train, x_test, y_test, x_valid, y_valid = prepare_data(params)
 
-    model = prepare_model(params)
 
-    # fit(model, data)
+    # prepare the model and fit
+    model = prepare_model(x_train, y_train, x_valid, y_valid, params)
 
-    # display_results(history)
+    # predictions
+    perform_predictions(model, x_test, y_test, params)
+    print('Confusion matrix saved at %s'%params['log_dir']+ params['model_name'])

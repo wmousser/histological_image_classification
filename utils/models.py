@@ -59,7 +59,7 @@ def classifier(feature_extractor, params):
     # flatten output
     model.add(layers.Flatten())
     # check mpl and add new layers
-    if params['mpl']==1:
+    if params['mlp']==1:
         model.add(layers.Dense(1024, activation='relu'))  # , kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01)))
         model.add(layers.Dropout(0.5))
         model.add(layers.Dense(nbr_classes, activation='softmax'))
@@ -73,6 +73,9 @@ def classifier(feature_extractor, params):
         model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dropout(0.5))
         model.add(layers.Dense(nbr_classes, activation='softmax'))
+    else:
+        print('The classifier is not supported ')
+    print(model.summary())
 
     # compile ...
     model.compile(optimizer=params['optimizer'],

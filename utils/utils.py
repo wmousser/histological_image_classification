@@ -1,10 +1,12 @@
 import cv2
 import numpy as np
-
+import datetime
+import matplotlib.pyplot as plt
 from utils.utils_breakHis import *
 from utils.models import *
-
+from sklearn.preprocessing import LabelEncoder
 from random import shuffle
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 
 
 def print_dict_values(name, dictionary):
@@ -13,10 +15,10 @@ def print_dict_values(name, dictionary):
     :param dictionary:
     :return: print keys and values of dictionary
     """
-    print('-'*100, '\nThe dict |  ', name, '  |   contains :\n', '-'*100)
+    print('-' * 100, '\nThe dict |  ', name, '  |   contains :\n', '-' * 100)
     for el in dictionary:
         print(el, dictionary[el])
-    print(100*'-', '\n', 100*'-')
+    print(100 * '-', '\n', 100 * '-')
 
 
 def get_split_values(nbr_items, test_split, valid_split):
@@ -58,14 +60,14 @@ def train_test_split_data_dict(data_dict, params):
                                                           valid_split=valid_split)
 
         data_split['train']['x'].extend(image_list[:nbr_train])
-        data_split['train']['y'].extend([class_name]*nbr_train)
+        data_split['train']['y'].extend([class_name] * nbr_train)
 
-        valid_list = image_list[nbr_train:nbr_train+nbr_valid]
+        valid_list = image_list[nbr_train:nbr_train + nbr_valid]
 
         data_split['valid']['x'].extend(valid_list)
         data_split['valid']['y'].extend([class_name] * nbr_valid)
 
-        data_split['test']['x'].extend(image_list[nbr_train+nbr_valid:])
+        data_split['test']['x'].extend(image_list[nbr_train + nbr_valid:])
         data_split['test']['y'].extend([class_name] * nbr_test)
     # resume results
     print('Split : %d images for train, %d images for valid and %d images for test'
@@ -119,11 +121,12 @@ def augment_data(data, params):
     # set an dict
     augmented_data = initialize_data()
     # load, convert and preprocess images
-    for set_name in ['valid']:  #, 'train', 'test']:
+    for set_name in ['valid', 'test']:  # , 'train']:
         print(set_name, 'is about ', len(data[set_name]['y']))
         for i in range(len(data[set_name]['x'])):
             image = cv2.imread(data[set_name]['x'][i])
             label = data[set_name]['y'][i]
+            # image preprocessing
             image = np.asarray(image)
             image = image.astype('float32')
             image /= 255
@@ -171,8 +174,23 @@ def shuffle_dataset(x, y):
     return list(x), list(y)
 
 
-def build_datasets(data):
+def to_categorical(y_set, class_list):
     """
+    :param y_set: int labels
+    :param class_list:
+    :return: binary class matrix
+    """
+    encoder = LabelEncoder()
+    y_enc = encoder.fit(y_set)
+    y_set = y_enc.transform(y_set)
+    y_set = tf.keras.utils.to_categorical(y=y_set, num_classes=len(class_list))
+
+    return y_set
+
+
+def build_datasets(data, params):
+    """
+    :param params: 
     :param data:
     :return: shuffled datasets x_train, y_train, x_test, y_test, x_valid, y_valid
     """
@@ -191,7 +209,14 @@ def build_datasets(data):
     # shuffle
     x_valid, y_valid = shuffle_dataset(x_valid, y_valid)
 
-    # todo : to categorical and gatagen
+    # as array
+    x_train = np.asarray(x_train)
+    x_test = np.asarray(x_test)
+    x_valid = np.asarray(x_valid)
+
+    # convert label vectors
+    y_train = np.asarray(to_categorical(y_train, params['classes']))
+    y_valid = np.asarray(to_categorical(y_valid, params['classes']))
 
     return (x_train, y_train,
             x_test, y_test,
@@ -199,6 +224,10 @@ def build_datasets(data):
 
 
 def prepare_data(params):
+    """
+    :param params:
+    :return: x_train, y_train, x_test, y_test, x_valid, y_valid
+    """
     # prepare a data dict from a directory
     data = get_image_dict_from_folder(params)
 
@@ -215,16 +244,74 @@ def prepare_data(params):
     data = augment_data(data, params)
 
     # build datasets
-    x_train, y_train, x_test, y_test, x_valid, y_valid = build_datasets(data)
+    x_train, y_train, x_test, y_test, x_valid, y_valid = build_datasets(data, params)
+
+    return x_train, y_train, x_test, y_test, x_valid, y_valid
 
 
-def prepare_model(params):
+def prepare_model(x_train, y_train, x_valid, y_valid, params):
+    """
+    :param x_valid: 
+    :param x_train: 
+    :param y_valid: 
+    :param params:
+    :return: compiled model
+    """
     # set feature extraction part
     model = feature_extractor(params)
 
     # add classification part
     model = classifier(model, params)
 
-    print(model.summary())
+    # callbacks
+    early_stopping = tf.keras.callbacks.EarlyStopping(patience=params['early_stopping_patience'], verbose=2)
+    model_checkpoint = tf.keras.callbacks.ModelCheckpoint(params['model_name'], save_best_only=True, verbose=2)
+    log_dir = params['output_dir'] + params['model_name'] + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    params['log_dir'] = log_dir + '/'
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    # (x_train, y_train) = (x_valid, y_valid)
+
+    # fit(model, data)
+    model.fit(x=x_train, y=y_train,
+              batch_size=params['train_batch_size'],
+              epochs=params['epochs'],
+              verbose=1,
+              callbacks=[early_stopping, model_checkpoint, tensorboard_callback],
+              validation_data=(x_valid, y_valid),
+              )
 
     return model
+
+
+def perform_predictions(model, x_test, y_test, params):
+    """
+    :param model:
+    :param x_test:
+    :param y_test:
+    :param params:
+    :return: print classification reports
+    """
+    # test the classifier
+    y_pred = model.predict(x_test, verbose=1)
+    y_pred = np.argmax(y_pred, axis=1)
+
+    y_test = np.asarray(y_test)
+    # encode y_test set
+    encoder = LabelEncoder()
+    encoder.fit(y_test)
+
+    # decode y_enc set
+    y_pred_labels = encoder.inverse_transform(y_pred)
+
+    # get y_test label list
+    labels = list(set(y_test))
+    # confusion matrix reports and plot
+    cm = confusion_matrix(y_true=y_test, y_pred=y_pred_labels, labels=labels)
+    # classifications reports
+    print(classification_report(y_test, y_pred_labels))
+    disp = ConfusionMatrixDisplay(cm, display_labels=labels)
+    disp.plot(include_values=True, cmap='plasma', xticks_rotation='-45',
+              values_format=None, ax=None)
+    plt.title(params['model_name'])
+    plt.savefig(params['log_dir'] + params['model_name'])
