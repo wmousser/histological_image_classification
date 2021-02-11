@@ -12,9 +12,8 @@ if __name__ == '__main__':
     params = OmegaConf.load(flags.config)
     print_dict_values('params', params)
 
-    # data = prepare_data(params)
+    # prepare data
     x_train, y_train, x_test, y_test, x_valid, y_valid = prepare_data(params)
-
 
     # prepare the model and fit
     model = prepare_model(x_train, y_train, x_valid, y_valid, params)

@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 import datetime
+import collections
 import matplotlib.pyplot as plt
+from tensorflow.keras.preprocessing.image import random_zoom, random_rotation, load_img, save_img, img_to_array
 from utils.utils_breakHis import *
 from utils.models import *
 from sklearn.preprocessing import LabelEncoder
@@ -88,15 +90,102 @@ def initialize_data():
             }
 
 
-def balance_dataset(data):
+def from_dict_path_to_data_dict(data):
     """
     :param data:
-    :return: todo : balanced dataset ...
+    :return: image as numpy array data_dict
     """
+    # initialize the resulting data_dict
+    image_data = initialize_data()
+    # todo: convert images from test train and valid sets
+    for set_name in ['valid']:  #, 'test' , 'train']:
+        print(set_name, 'is about ', len(data[set_name]['y']))
+        # loop for each image
+        for i in range(len(data[set_name]['x'])):
+            # preprocess image
+            image = preprocess_image(data[set_name]['x'][i])
+            label = data[set_name]['y'][i]
+            # update the data_dict
+            image_data[set_name] = append_im_data_dict(image_data[set_name], image, label)
+    return image_data
 
-    # balanced data
-    data_balanced = initialize_data()
-    return data
+
+def compute_nbr_images_to_add(nbr_images, target_nbr):
+    """
+    :param total:
+    :param target_nbr:
+    :return: nbr of images used to balance data
+    """
+    return int((target_nbr - nbr_images)/8)
+
+
+def balance_dataset(data, params):
+    """
+    :param data:
+    :return: preprocess then balance data applying rotations and zoom
+    """
+    balanced_data = initialize_data()
+    # temp dict to balance images per class
+    temps_dict = {}
+    # initialize content
+    print('-'*30,'   Balancing   ','-'*30)
+    for cl in params['classes']:
+        temps_dict[cl] = []
+    # todo : loop over train, test and valid sets
+    for set_name in ['valid']:#, 'test' , 'train']:
+        print(set_name, 'is about ', len(data[set_name]['y']))
+        # get the nbr of images to have
+        target_nbr = max(collections.Counter(data[set_name]['y']).values())
+        # fill in the temp_dict
+        for cl in params['classes']:
+            for index, img in enumerate(data[set_name]['x']):
+                if data[set_name]['y'][index] == cl:
+                    temps_dict[cl].append(data[set_name]['x'][index])
+        # balance class per class
+        for label in params['classes']: #d
+            # number of available images
+            nbr_images = len(temps_dict[cl])
+            # number of images to use for balancing
+            images_to_add = compute_nbr_images_to_add(nbr_images, target_nbr)
+            # create new images and append them into the balanced_data
+            for i in range(images_to_add):
+                # working on image
+                image = temps_dict[cl][i]
+                # insert images into balanced_data
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], image, label)
+
+                # ROTATE_75_CLOCKWISE
+                im = random_rotation(image, rg=75, fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+                # ROTATE_75_ANTICLOCKWISE
+                im = random_rotation(image, rg=-75, fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+
+                # ROTATE_15_CLOCKWISE
+                im = random_rotation(image, rg=15, fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+                # ROTATE_15_ANTICLOCKWISE
+                im = random_rotation(image, rg=-15, fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+
+                # Zoom 0.65, 0.75, 0.8, 0.9
+                im = random_zoom(image, zoom_range=(0.65, 0.65), fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+                im = random_zoom(image, zoom_range=(0.75, 0.75), fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+                im = random_zoom(image, zoom_range=(0.8, 0.8), fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+                im = random_zoom(image, zoom_range=(0.9, 0.9), fill_mode='reflect')
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+            # add / insert the remaining images without rotations
+            for j in range(i,nbr_images):
+                im = temps_dict[cl][j]
+                balanced_data[set_name] = append_im_data_dict(balanced_data[set_name], im, label)
+
+        # Show resume
+        print(set_name, 'balanced with ', len(balanced_data[set_name]['y']))
+    # return balanced data
+    return balanced_data
 
 
 def append_im_data_dict(data, im, label):
@@ -112,24 +201,36 @@ def append_im_data_dict(data, im, label):
     return data
 
 
+def preprocess_image(image_path):
+    """
+    Loads image from image_path
+    :param image_path:
+    :return: a rescaled image [0, 1]
+    """
+
+    # image preprocessing
+    image = load_img(image_path, color_mode='rgb')
+    image = img_to_array(image)
+    image = image.astype('float32')
+    image /= 255
+    return image
+
+
 def augment_data(data, params):
     """
     :param data:
     :param params:
-    :return: Preprocess then augment data using flip and rotations
+    :return: augment data using flip and rotations
     """
     # set an dict
     augmented_data = initialize_data()
-    # load, convert and preprocess images
-    for set_name in ['valid', 'test']:  # , 'train']:
+    print('-'*30,'   Augmentations   ','-'*30)
+    # todo: loop over test, train and validation sets
+    for set_name in ['valid']: #, 'test', 'train']:
         print(set_name, 'is about ', len(data[set_name]['y']))
         for i in range(len(data[set_name]['x'])):
-            image = cv2.imread(data[set_name]['x'][i])
+            image = data[set_name]['x'][i]
             label = data[set_name]['y'][i]
-            # image preprocessing
-            image = np.asarray(image)
-            image = image.astype('float32')
-            image /= 255
             # resize and insert the current image
             image = cv2.resize(image, (params['input_width'], params['input_depth']))
             augmented_data[set_name] = append_im_data_dict(augmented_data[set_name], image, label)
@@ -237,8 +338,11 @@ def prepare_data(params):
     # split data into train, test and validation sets
     data = train_test_split_data_dict(data, params)
 
+    # load images as numpy array
+    data = from_dict_path_to_data_dict(data)
+
     # balance data
-    data = balance_dataset(data)
+    data = balance_dataset(data, params)
 
     # augmentations
     data = augment_data(data, params)
@@ -270,6 +374,7 @@ def prepare_model(x_train, y_train, x_valid, y_valid, params):
     params['log_dir'] = log_dir + '/'
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
+    # todo : comment the following
     # (x_train, y_train) = (x_valid, y_valid)
 
     # fit(model, data)
